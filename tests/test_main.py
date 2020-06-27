@@ -21,6 +21,11 @@ class TestPlaylistChopper:
         logging.info(new_test_playlist)
         yield new_test_playlist
 
+    @pytest.fixture()
+    def get_user_saved_list(self):
+        all_tracks = get_all_tracks()
+        yield all_tracks
+
     def test_create_playlist(self, create_test_playlist):
         assert create_test_playlist
         TestPlaylistChopper.sp.user_playlist_unfollow(

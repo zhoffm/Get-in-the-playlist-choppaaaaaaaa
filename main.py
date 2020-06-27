@@ -19,6 +19,7 @@ def chop_liked_songs():
     while more_tracks:
         track_id_list = strip_ids_from_tracklist(track_batch)
         # new_playlist = create_playlist(playlist_name, )
+        offset += 1
 
 
 def get_all_playlists():
@@ -35,9 +36,13 @@ def get_all_playlists():
 
 
 def create_playlist_name(track_list):
-    start_date = arrow.get(track_list[0].get('added_at'))
-    end_date = arrow.get(track_list[-1].get('added_at'))
-    print(start_date, end_date)
+    logging.info(track_list)
+    if track_list:
+        start_track_name = track_list[0].get('track').get('name')
+        end_track_name = track_list[-1].get('track').get('name')
+        new_playlist_name = f'{start_track_name} - {end_track_name}'
+        logging.info(f'New playlist name: {new_playlist_name}')
+        return new_playlist_name
 
 
 def create_playlist(playlist_name, description=''):
@@ -51,6 +56,7 @@ def add_songs_to_playlist(playlist_id, tracklist):
     sp.user_playlist_add_tracks(user_id, playlist_id, track_id_list)
 
 
+# TODO: Change this function because offset!=pagination
 def get_100_tracks(offset=0):
     results = sp.current_user_saved_tracks(limit=50, offset=offset)
     tracks = results.get('items')
@@ -83,7 +89,7 @@ def get_all_tracks():
 if __name__ == '__main__':
     # created_playlist = create_playlist('test_playlist')
     # print(created_playlist)
-    next_batch, tracklist = get_100_tracks()
+    next_batch, tracklist = get_100_tracks(offset=1)
     print(next_batch, tracklist)
     create_playlist_name(tracklist)
 
