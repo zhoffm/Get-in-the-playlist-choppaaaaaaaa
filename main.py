@@ -4,6 +4,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import logging
 import arrow
+import operator
 
 logging.basicConfig(level='DEBUG')
 
@@ -14,12 +15,19 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, username=username))
 
 
 def chop_liked_songs():
-    offset = 0
+    offset = get_total_number_liked_songs() - 50
+    logging.info(f'Current Position: {offset}')
     more_tracks, track_batch = get_100_tracks(offset)
+
     while more_tracks:
-        track_id_list = strip_ids_from_tracklist(track_batch)
-        # new_playlist = create_playlist(playlist_name, )
-        offset += 1
+        playlist_name = create_playlist_name(track_batch)
+        new_playlist = create_playlist(playlist_name)
+        add_songs_to_playlist(new_playlist.get('id'), track_batch)
+        offset -= 100
+        if offset < 0:
+            return
+        logging.info(f'Current Position: {offset}')
+        more_tracks, track_batch = get_100_tracks(offset)
 
 
 def get_all_playlists():
@@ -29,14 +37,14 @@ def get_all_playlists():
 
     while results.get("next"):
         results = sp.next(results)
-        logging.info(results.get("items"))
+        logging.debug(results.get("items"))
         playlists.extend(results.get("items"))
 
     return playlists
 
 
 def create_playlist_name(track_list):
-    logging.info(track_list)
+    logging.info(f'Track List: {track_list}')
     if track_list:
         start_track_name = track_list[0].get('track').get('name')
         end_track_name = track_list[-1].get('track').get('name')
@@ -53,25 +61,41 @@ def create_playlist(playlist_name, description=''):
 
 def add_songs_to_playlist(playlist_id, tracklist):
     track_id_list = strip_ids_from_tracklist(tracklist)
+    logging.debug(track_id_list)
     sp.user_playlist_add_tracks(user_id, playlist_id, track_id_list)
 
 
 # TODO: Change this function because offset!=pagination
-def get_100_tracks(offset=0):
+def get_100_tracks(offset):
     results = sp.current_user_saved_tracks(limit=50, offset=offset)
+    logging.debug(results)
     tracks = results.get('items')
 
-    while len(tracks) % 100 != 0:
-        results = sp.next(results)
+    if results.get('previous'):
+        results = sp.previous(results)
+    if results:
         logging.info(results.get('items'))
-        tracks.extend(results.get('items'))
+        tracks = results.get('items') + tracks
 
-    return results.get('next'), tracks
+    return results.get('previous'), tracks
+
+
+def verify_order_by_time_added(track_list):
+    unsorted_track_list = track_list
+    logging.debug(unsorted_track_list)
+    track_list.sort(key=operator.itemgetter('added_at'), reverse=True)
+    logging.debug(track_list)
+    return unsorted_track_list == track_list
 
 
 def strip_ids_from_tracklist(results):
-    results_ids = [result.get('track').get('id') for result in results if results.get('track')]
+    results_ids = [result.get('track').get('id') for result in results if result.get('track')]
     return results_ids
+
+
+def get_total_number_liked_songs():
+    results = sp.current_user_saved_tracks()
+    return results.get('total')
 
 
 def get_all_tracks():
@@ -87,10 +111,10 @@ def get_all_tracks():
 
 
 if __name__ == '__main__':
-    # created_playlist = create_playlist('test_playlist')
-    # print(created_playlist)
-    next_batch, tracklist = get_100_tracks(offset=1)
-    print(next_batch, tracklist)
-    create_playlist_name(tracklist)
-
+    # offset = get_total_number_liked_songs() - 50
+    # more_tracks, track_batch = get_100_tracks(offset)
+    # playlist_name = create_playlist_name(track_batch)
+    # new_playlist = create_playlist(playlist_name)
+    # add_songs_to_playlist(new_playlist.get('id'), track_batch)
+    chop_liked_songs()
 

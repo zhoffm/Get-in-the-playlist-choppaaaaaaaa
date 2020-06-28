@@ -2,7 +2,12 @@ import pytest
 import spotipy
 import logging
 from spotipy.oauth2 import SpotifyOAuth
-from main import create_playlist, get_all_playlists, get_all_tracks
+from main import create_playlist, \
+    get_all_playlists, \
+    get_all_tracks, \
+    verify_order_by_time_added, \
+    get_100_tracks, \
+    get_total_number_liked_songs
 
 logging.basicConfig(level='DEBUG')
 
@@ -26,6 +31,12 @@ class TestPlaylistChopper:
         all_tracks = get_all_tracks()
         yield all_tracks
 
+    @pytest.fixture()
+    def get_100_tracks_from_user_saved_list(self):
+        offset = get_total_number_liked_songs() - 50
+        previous, tracks = get_100_tracks(offset)
+        yield tracks
+
     def test_create_playlist(self, create_test_playlist):
         assert create_test_playlist
         TestPlaylistChopper.sp.user_playlist_unfollow(
@@ -40,3 +51,7 @@ class TestPlaylistChopper:
     def test_get_all_tracks(self):
         track_list = get_all_tracks()
         assert 'error' not in track_list
+
+    def test_verify_order_by_time_added(self, get_100_tracks_from_user_saved_list):
+        print(get_100_tracks_from_user_saved_list)
+        assert verify_order_by_time_added(get_100_tracks_from_user_saved_list)
